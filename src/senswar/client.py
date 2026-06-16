@@ -6,8 +6,10 @@ from typing import Any, Callable, Iterable
 from .exceptions import DeviceNotFoundError, NotConnectedError, SenswarDependencyError
 from .modules.battery import BatteryGaugeModule
 from .modules.charger import ChargerModule
+from .modules.haptic import HapticModule
 from .modules.imu import ImuModule
 from .modules.led import LedModule
+from .modules.temperature import TemperatureModule
 
 DEFAULT_NAME_PREFIXES = ("Sens Wear", "SensWear", "SenseWear", "Senswar")
 NotifyCallback = Callable[[object, bytearray], None]
@@ -51,8 +53,10 @@ class SenswarClient:
         self._device: Any | None = None
         self.battery = BatteryGaugeModule(self)
         self.charger = ChargerModule(self)
+        self.haptic = HapticModule(self)
         self.imu = ImuModule(self)
         self.led = LedModule(self)
+        self.temperature = TemperatureModule(self)
 
     async def __aenter__(self) -> "SenswarClient":
         return await self.connect()

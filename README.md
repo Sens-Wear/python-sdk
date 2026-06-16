@@ -11,6 +11,8 @@ This first SDK slice supports:
 - Subscribing to charger state notifications.
 - Reading and writing the custom LED service color characteristic.
 - Subscribing to custom IMU quaternion and acceleration notifications.
+- Reading, configuring, and subscribing to custom temperature notifications.
+- Writing custom haptic vibration patterns.
 
 ## Install for local development
 
@@ -107,6 +109,49 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
+## Read and stream temperature
+
+```python
+import asyncio
+from senswar import SenswarClient
+
+async def main() -> None:
+    async with SenswarClient() as device:
+        await device.temperature.set_sampling_rate_hz(2)
+
+        latest = await device.temperature.read()
+        print(f"Latest: {latest.temperature_c:.3f} C")
+
+        def on_temperature(sample):
+            print(f"Stream: {sample.temperature_c:.3f} C")
+
+        await device.temperature.subscribe(on_temperature)
+        await asyncio.sleep(10)
+        await device.temperature.unsubscribe()
+
+asyncio.run(main())
+```
+
+## Play haptic vibration
+
+```python
+import asyncio
+from senswar import HapticFrame, HapticPattern, SenswarClient
+
+async def main() -> None:
+    async with SenswarClient() as device:
+        await device.haptic.vibrate(duration_ms=150, intensity=255)
+
+        pattern = HapticPattern.from_frames([
+            HapticFrame(duration_ms=80, intensity=220),
+            HapticFrame(duration_ms=60, intensity=0),
+            HapticFrame(duration_ms=120, intensity=180),
+        ])
+        await device.haptic.play(pattern)
+
+asyncio.run(main())
+```
+
 ## Battery gauge fields
 
 The SDK maps the firmware's `power_lbs_gauge_state` payload. The current firmware bridge forwards BQ27427 temperature and state-of-charge values in 0.1-unit resolution.
@@ -189,3 +234,47 @@ Linear acceleration notifications use UUID `7d2b6c12-9d78-4f3c-a122-6d2c4e6d2a11
 | `z` | raw signed value |
 
 Convenience properties expose `x_g`, `y_g`, and `z_g` using the BHI360 example scaling factor `value / 4096.0`. The current firmware labels this BLE stream `lacc`, but configures the BHI360 `BHY2_SENSOR_ID_ACC` virtual sensor.
+
+## Temperature fields
+
+The SDK maps the firmware's `temperature_lbs_sample` payload. The temperature characteristic supports read and notify.
+
+| SDK field | Unit |
+| --- | --- |
+| `temperature_mdeg_c` | millidegrees Celsius |
+
+Convenience properties expose `temperature_c` and `temperature_f`.
+
+Temperature UUIDs:
+
+| Purpose | UUID |
+| --- | --- |
+| Service | `8e83a64b-319d-47c2-ba53-6185fae0007f` |
+| Sampling rate write | `8e83a64c-319d-47c2-ba53-6185fae0007f` |
+| Transfer interval write | `8e83a64d-319d-47c2-ba53-6185fae0007f` |
+| Sample read/notify | `8e83a64e-319d-47c2-ba53-6185fae0007f` |
+
+`set_sampling_rate_hz()` writes a nonzero little-endian `uint16`. `set_transfer_interval()` also writes a nonzero little-endian `uint16`; the current MAX30208 firmware accepts it over BLE but does not use it when scheduling samples.
+
+## Haptic pattern fields
+
+The SDK maps the firmware's write-only haptic pattern characteristic.
+
+Haptic UUIDs:
+
+| Purpose | UUID |
+| --- | --- |
+| Service | `daa05e91-f514-4a4e-8fc5-d1b80f25f24d` |
+| Pattern write | `daa05e92-f514-4a4e-8fc5-d1b80f25f24d` |
+
+Pattern payload layout:
+
+| Field | Format |
+| --- | --- |
+| `version` | byte, currently `1` |
+| `flags` | byte, reserved, send `0` |
+| `frame_count` | little-endian `uint16`, 1 to 64 |
+| frame `duration_ms` | little-endian `uint16`, nonzero |
+| frame `intensity` | byte, 0 to 255 |
+
+The actuator uses DRV2605 real-time playback. A frame with intensity `0` acts as an off/pause frame.
