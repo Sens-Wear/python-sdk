@@ -34,7 +34,7 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/SenseraTechnologies"
+Homepage = "https://sens-wear.com"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/senswar"]
