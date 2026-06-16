@@ -146,7 +146,7 @@ class LinearAccelerationSample:
 
 
 class ImuModule:
-    """Notify-only IMU streams for the Senswar IMU service."""
+    """Notify-only IMU streams for the SensWear IMU service."""
 
     quaternion_uuid = IMU_QUATERNION_UUID
     linear_acceleration_uuid = IMU_LINEAR_ACCELERATION_UUID
@@ -207,3 +207,4 @@ class ImuModule:
 
         await self.unsubscribe_quaternion()
         await self.unsubscribe_linear_acceleration()
+

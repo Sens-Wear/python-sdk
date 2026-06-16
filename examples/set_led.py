@@ -1,11 +1,11 @@
 import argparse
 import asyncio
 
-from senswar import LedColor, SenswarClient
+from senswear import LedColor, SenswearClient
 
 
 async def run(device: str | None, color: str, timeout: float, no_response: bool) -> None:
-    async with SenswarClient(device, timeout=timeout) as client:
+    async with SenswearClient(device, timeout=timeout) as client:
         led_color = LedColor.from_hex(color)
         await client.led.set(led_color, response=not no_response)
         current = await client.led.read()
@@ -14,7 +14,7 @@ async def run(device: str | None, color: str, timeout: float, no_response: bool)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Set the Senswar LED color over BLE.")
+    parser = argparse.ArgumentParser(description="Set the SensWear LED color over BLE.")
     parser.add_argument("color", help="LED color as #RRGGBB or #RRGGBBWW.")
     parser.add_argument(
         "device",
@@ -33,3 +33,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

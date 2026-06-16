@@ -156,7 +156,7 @@ class ChargerState:
 
 
 class ChargerModule:
-    """Charger accessors for the Senswar power service."""
+    """Charger accessors for the SensWear power service."""
 
     characteristic_uuid = POWER_CHARGER_STATE_UUID
 
@@ -192,3 +192,4 @@ class ChargerModule:
             return
         await self._client.stop_notify(self.characteristic_uuid)
         self._notify_handler = None
+

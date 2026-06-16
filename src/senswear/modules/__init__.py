@@ -1,4 +1,4 @@
-"""High-level Senswar hardware modules."""
+"""High-level SensWear hardware modules."""
 
 from .battery import BatteryGaugeModule, BatteryGaugeState
 from .charger import ChargerModule, ChargerState
@@ -23,3 +23,4 @@ __all__ = [
     "TemperatureModule",
     "TemperatureSample",
 ]
+

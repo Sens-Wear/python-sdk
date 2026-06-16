@@ -81,7 +81,7 @@ class BatteryGaugeState:
 
 
 class BatteryGaugeModule:
-    """Battery gauge accessors for the Senswar power service."""
+    """Battery gauge accessors for the SensWear power service."""
 
     characteristic_uuid = POWER_GAUGE_STATE_UUID
 
@@ -122,3 +122,4 @@ class BatteryGaugeModule:
             return
         await self._client.stop_notify(self.characteristic_uuid)
         self._notify_handler = None
+

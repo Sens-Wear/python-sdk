@@ -5,9 +5,9 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from senswar.exceptions import ProtocolError
-from senswar.modules.led import LED_COLOR_LENGTH, LedColor, LedModule
-from senswar.uuids import LED_COLOR_UUID
+from senswear.exceptions import ProtocolError
+from senswear.modules.led import LED_COLOR_LENGTH, LedColor, LedModule
+from senswear.uuids import LED_COLOR_UUID
 
 
 class LedColorTests(unittest.TestCase):
@@ -76,3 +76,4 @@ class LedModuleTests(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

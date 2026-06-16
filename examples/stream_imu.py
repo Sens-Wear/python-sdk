@@ -1,11 +1,11 @@
 import argparse
 import asyncio
 
-from senswar import LinearAccelerationSample, QuaternionSample, SenswarClient
+from senswear import LinearAccelerationSample, QuaternionSample, SenswearClient
 
 
 async def run(device: str | None, timeout: float, duration: float) -> None:
-    async with SenswarClient(device, timeout=timeout) as client:
+    async with SenswearClient(device, timeout=timeout) as client:
         def on_quaternion(sample: QuaternionSample) -> None:
             x, y, z, w = sample.to_tuple()
             print(
@@ -28,7 +28,7 @@ async def run(device: str | None, timeout: float, duration: float) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Stream Senswar IMU notifications over BLE.")
+    parser = argparse.ArgumentParser(description="Stream SensWear IMU notifications over BLE.")
     parser.add_argument(
         "device",
         nargs="?",
@@ -42,3 +42,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

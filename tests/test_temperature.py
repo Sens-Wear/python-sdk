@@ -6,9 +6,9 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from senswar.exceptions import ProtocolError
-from senswar.modules.temperature import TEMPERATURE_SAMPLE_LENGTH, TemperatureModule, TemperatureSample
-from senswar.uuids import (
+from senswear.exceptions import ProtocolError
+from senswear.modules.temperature import TEMPERATURE_SAMPLE_LENGTH, TemperatureModule, TemperatureSample
+from senswear.uuids import (
     TEMPERATURE_SAMPLE_UUID,
     TEMPERATURE_SAMPLING_RATE_UUID,
     TEMPERATURE_TRANSFER_INTERVAL_UUID,
@@ -104,3 +104,4 @@ class TemperatureModuleTests(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

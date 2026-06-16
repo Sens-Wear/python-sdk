@@ -113,7 +113,7 @@ class LedColor:
 
 
 class LedModule:
-    """LED color controls for the Senswar LED service."""
+    """LED color controls for the SensWear LED service."""
 
     characteristic_uuid = LED_COLOR_UUID
 
@@ -148,3 +148,4 @@ class LedModule:
         """Turn the LEDs off."""
 
         await self.set(LedColor(0, 0, 0, 0), response=response)
+

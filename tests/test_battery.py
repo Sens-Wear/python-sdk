@@ -6,8 +6,8 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from senswar.exceptions import ProtocolError
-from senswar.modules.battery import BatteryGaugeState, GAUGE_STATE_LENGTH
+from senswear.exceptions import ProtocolError
+from senswear.modules.battery import BatteryGaugeState, GAUGE_STATE_LENGTH
 
 
 class BatteryGaugeStateTests(unittest.TestCase):
@@ -39,3 +39,4 @@ class BatteryGaugeStateTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -1,7 +1,7 @@
 import argparse
 import asyncio
 
-from senswar import HapticFrame, HapticPattern, SenswarClient
+from senswear import HapticFrame, HapticPattern, SenswearClient
 
 
 async def run(
@@ -11,7 +11,7 @@ async def run(
     intensity: int,
     double_pulse: bool,
 ) -> None:
-    async with SenswarClient(device, timeout=timeout) as client:
+    async with SenswearClient(device, timeout=timeout) as client:
         if double_pulse:
             pattern = HapticPattern.from_frames(
                 [
@@ -29,7 +29,7 @@ async def run(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Play a Senswar haptic vibration pattern over BLE.")
+    parser = argparse.ArgumentParser(description="Play a SensWear haptic vibration pattern over BLE.")
     parser.add_argument(
         "device",
         nargs="?",
@@ -45,3 +45,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

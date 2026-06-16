@@ -1,12 +1,12 @@
-"""Python SDK for Senswar/SensWear hardware."""
+"""Python SDK for SensWear hardware."""
 
-from .client import DiscoveredDevice, SenswarClient
+from .client import DiscoveredDevice, SenswearClient
 from .exceptions import (
     DeviceNotFoundError,
     NotConnectedError,
     ProtocolError,
-    SenswarDependencyError,
-    SenswarError,
+    SenswearDependencyError,
+    SenswearError,
 )
 from .modules.battery import BatteryGaugeState
 from .modules.charger import ChargerState
@@ -27,10 +27,11 @@ __all__ = [
     "LedColor",
     "LinearAccelerationSample",
     "QuaternionSample",
-    "SenswarClient",
-    "SenswarDependencyError",
-    "SenswarError",
+    "SenswearClient",
+    "SenswearDependencyError",
+    "SenswearError",
     "TemperatureSample",
 ]
 
 __version__ = "0.1.1"
+

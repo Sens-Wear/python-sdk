@@ -6,8 +6,8 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from senswar.exceptions import ProtocolError
-from senswar.modules.charger import CHARGER_STATE_LENGTH, ChargerState
+from senswear.exceptions import ProtocolError
+from senswear.modules.charger import CHARGER_STATE_LENGTH, ChargerState
 
 
 class ChargerStateTests(unittest.TestCase):
@@ -39,3 +39,4 @@ class ChargerStateTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

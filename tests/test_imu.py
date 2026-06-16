@@ -7,15 +7,15 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from senswar.exceptions import ProtocolError
-from senswar.modules.imu import (
+from senswear.exceptions import ProtocolError
+from senswear.modules.imu import (
     LINEAR_ACCELERATION_LENGTH,
     QUATERNION_LENGTH,
     ImuModule,
     LinearAccelerationSample,
     QuaternionSample,
 )
-from senswar.uuids import IMU_LINEAR_ACCELERATION_UUID, IMU_QUATERNION_UUID
+from senswear.uuids import IMU_LINEAR_ACCELERATION_UUID, IMU_QUATERNION_UUID
 
 
 class QuaternionSampleTests(unittest.TestCase):
@@ -102,3 +102,4 @@ class ImuModuleTests(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

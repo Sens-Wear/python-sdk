@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Iterable
 
-from .exceptions import DeviceNotFoundError, NotConnectedError, SenswarDependencyError
+from .exceptions import DeviceNotFoundError, NotConnectedError, SenswearDependencyError
 from .modules.battery import BatteryGaugeModule
 from .modules.charger import ChargerModule
 from .modules.haptic import HapticModule
@@ -11,7 +11,7 @@ from .modules.imu import ImuModule
 from .modules.led import LedModule
 from .modules.temperature import TemperatureModule
 
-DEFAULT_NAME_PREFIXES = ("Sens Wear", "SensWear", "SenseWear", "Senswar")
+DEFAULT_NAME_PREFIXES = ("Sens Wear", "SensWear", "SenseWear")
 NotifyCallback = Callable[[object, bytearray], None]
 
 
@@ -24,15 +24,15 @@ class DiscoveredDevice:
     rssi: int | None = None
 
 
-class SenswarClient:
-    """Async BLE client for Senswar hardware.
+class SenswearClient:
+    """Async BLE client for SensWear hardware.
 
     Parameters
     ----------
     address_or_name:
         Optional BLE address, platform identifier, or exact advertised name.
         When omitted, the client connects to the first device with a known
-        Senswar/SensWear advertised name prefix.
+        SensWear advertised name prefix.
     timeout:
         BLE scan/connect timeout in seconds.
     name_prefixes:
@@ -58,7 +58,7 @@ class SenswarClient:
         self.led = LedModule(self)
         self.temperature = TemperatureModule(self)
 
-    async def __aenter__(self) -> "SenswarClient":
+    async def __aenter__(self) -> "SenswearClient":
         return await self.connect()
 
     async def __aexit__(self, exc_type: object, exc: object, tb: object) -> None:
@@ -71,7 +71,7 @@ class SenswarClient:
         timeout: float = 5.0,
         name_prefixes: Iterable[str] = DEFAULT_NAME_PREFIXES,
     ) -> list[DiscoveredDevice]:
-        """Scan for Senswar-like BLE peripherals."""
+        """Scan for SensWear-like BLE peripherals."""
 
         _, BleakScanner = _load_bleak()
         prefixes = tuple(name_prefixes)
@@ -112,8 +112,8 @@ class SenswarClient:
                 return str(address)
         return None
 
-    async def connect(self) -> "SenswarClient":
-        """Connect to a Senswar BLE peripheral."""
+    async def connect(self) -> "SenswearClient":
+        """Connect to a SensWear BLE peripheral."""
 
         if self.is_connected:
             return self
@@ -171,7 +171,7 @@ class SenswarClient:
                 if _name_matches_prefix(getattr(device, "name", None), self.name_prefixes):
                     return device
             raise DeviceNotFoundError(
-                "No Senswar device was found. Make sure the device is powered, "
+                "No SensWear device was found. Make sure the device is powered, "
                 "advertising, and close enough to the host."
             )
 
@@ -187,7 +187,7 @@ class SenswarClient:
 
     def _require_client(self) -> Any:
         if not self.is_connected or self._client is None:
-            raise NotConnectedError("Connect to a Senswar device before using GATT operations.")
+            raise NotConnectedError("Connect to a SensWear device before using GATT operations.")
         return self._client
 
 
@@ -195,9 +195,9 @@ def _load_bleak() -> tuple[type[Any], type[Any]]:
     try:
         from bleak import BleakClient, BleakScanner
     except ImportError as exc:
-        raise SenswarDependencyError(
-            "The Senswar SDK needs the 'bleak' package for BLE access. "
-            "Install it with 'python -m pip install senswar' or "
+        raise SenswearDependencyError(
+            "The SensWear SDK needs the 'bleak' package for BLE access. "
+            "Install it with 'python -m pip install senswear' or "
             "'python -m pip install bleak'."
         ) from exc
     return BleakClient, BleakScanner
@@ -225,3 +225,4 @@ def _device_matches_target(device: object, target: str) -> bool:
 def _looks_like_ble_identifier(value: str) -> bool:
     # BLE addresses on Windows/Linux and CoreBluetooth UUIDs on macOS both use separators.
     return ":" in value or "-" in value
+

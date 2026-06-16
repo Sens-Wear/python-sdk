@@ -3,15 +3,15 @@ requires = ["hatchling>=1.21"]
 build-backend = "hatchling.build"
 
 [project]
-name = "senswar"
+name = "senswear"
 version = "0.1.1"
-description = "Python SDK for connecting to Senswar hardware over BLE."
+description = "Python SDK for connecting to SensWear hardware over BLE."
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
   { name = "Sensera Technologies" }
 ]
-keywords = ["senswar", "sensewear", "ble", "wearable", "battery"]
+keywords = ["senswear", "sensewear", "ble", "wearable", "battery"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
@@ -37,4 +37,5 @@ dev = [
 Homepage = "https://sens-wear.com"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/senswar"]
+packages = ["src/senswear"]
+

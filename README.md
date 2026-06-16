@@ -1,10 +1,10 @@
-# Senswar Python SDK
+# SensWear Python SDK
 
-Python SDK for connecting to Senswar/SensWear hardware over BLE.
+Python SDK for connecting to SensWear hardware over BLE.
 
 This first SDK slice supports:
 
-- Discovering and connecting to a Senswar device advertising as `Sens Wear ...`.
+- Discovering and connecting to a SensWear device advertising as `Sens Wear ...`.
 - Reading the custom power service battery gauge characteristic.
 - Subscribing to battery gauge notifications.
 - Reading the custom power service charger state characteristic.
@@ -25,10 +25,10 @@ python -m pip install -e .
 
 ```python
 import asyncio
-from senswar import SenswarClient
+from senswear import SenswearClient
 
 async def main() -> None:
-    async with SenswarClient() as device:
+    async with SenswearClient() as device:
         state = await device.battery.read()
         print(f"Battery: {state.state_of_charge_percent:.1f}%")
         print(f"Voltage: {state.voltage_mv} mV")
@@ -40,7 +40,7 @@ asyncio.run(main())
 To connect to a known BLE address or exact advertised name, pass it to the client:
 
 ```python
-async with SenswarClient("Sens Wear (Regulator)") as device:
+async with SenswearClient("Sens Wear (Regulator)") as device:
     state = await device.battery.read()
 ```
 
@@ -48,10 +48,10 @@ async with SenswarClient("Sens Wear (Regulator)") as device:
 
 ```python
 import asyncio
-from senswar import SenswarClient
+from senswear import SenswearClient
 
 async def main() -> None:
-    async with SenswarClient() as device:
+    async with SenswearClient() as device:
         state = await device.charger.read()
         print(f"Power good: {state.power_good}")
         print(f"Charging: {state.charging}")
@@ -65,10 +65,10 @@ asyncio.run(main())
 
 ```python
 import asyncio
-from senswar import LedColor, SenswarClient
+from senswear import LedColor, SenswearClient
 
 async def main() -> None:
-    async with SenswarClient() as device:
+    async with SenswearClient() as device:
         await device.led.set(LedColor(red=255, green=0, blue=0))
         current = await device.led.read()
         print(current.to_hex(include_white=True))
@@ -91,10 +91,10 @@ The IMU service is notify-only. Subscribing to either IMU characteristic enables
 
 ```python
 import asyncio
-from senswar import SenswarClient
+from senswear import SenswearClient
 
 async def main() -> None:
-    async with SenswarClient() as device:
+    async with SenswearClient() as device:
         def on_quaternion(sample):
             print(sample.to_tuple())
 
@@ -113,10 +113,10 @@ asyncio.run(main())
 
 ```python
 import asyncio
-from senswar import SenswarClient
+from senswear import SenswearClient
 
 async def main() -> None:
-    async with SenswarClient() as device:
+    async with SenswearClient() as device:
         await device.temperature.set_sampling_rate_hz(2)
 
         latest = await device.temperature.read()
@@ -136,10 +136,10 @@ asyncio.run(main())
 
 ```python
 import asyncio
-from senswar import HapticFrame, HapticPattern, SenswarClient
+from senswear import HapticFrame, HapticPattern, SenswearClient
 
 async def main() -> None:
-    async with SenswarClient() as device:
+    async with SenswearClient() as device:
         await device.haptic.vibrate(duration_ms=150, intensity=255)
 
         pattern = HapticPattern.from_frames([
@@ -278,3 +278,4 @@ Pattern payload layout:
 | frame `intensity` | byte, 0 to 255 |
 
 The actuator uses DRV2605 real-time playback. A frame with intensity `0` acts as an off/pause frame.
+

@@ -1,11 +1,11 @@
 import argparse
 import asyncio
 
-from senswar import SenswarClient
+from senswear import SenswearClient
 
 
 async def run(device: str | None, timeout: float) -> None:
-    async with SenswarClient(device, timeout=timeout) as client:
+    async with SenswearClient(device, timeout=timeout) as client:
         state = await client.battery.read()
         print(f"Connected: {client.address or 'unknown'}")
         print(f"State of charge: {state.state_of_charge_percent:.1f}%")
@@ -18,7 +18,7 @@ async def run(device: str | None, timeout: float) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Read the Senswar battery gauge over BLE.")
+    parser = argparse.ArgumentParser(description="Read the SensWear battery gauge over BLE.")
     parser.add_argument(
         "device",
         nargs="?",
@@ -31,3 +31,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

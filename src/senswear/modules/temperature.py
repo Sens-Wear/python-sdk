@@ -71,7 +71,7 @@ class TemperatureSample:
 
 
 class TemperatureModule:
-    """Temperature accessors for the Senswar temperature service."""
+    """Temperature accessors for the SensWear temperature service."""
 
     sample_uuid = TEMPERATURE_SAMPLE_UUID
     sampling_rate_uuid = TEMPERATURE_SAMPLING_RATE_UUID
@@ -131,3 +131,4 @@ def _pack_uint16_nonzero(value: int, name: str) -> bytes:
     if not isinstance(value, int) or not 1 <= value <= 0xFFFF:
         raise ValueError(f"{name} must be an integer between 1 and 65535.")
     return struct.pack(UINT16_FORMAT, value)
+

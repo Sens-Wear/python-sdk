@@ -136,7 +136,7 @@ class HapticPattern:
 
 
 class HapticModule:
-    """Haptic actuator controls for the Senswar haptic service."""
+    """Haptic actuator controls for the SensWear haptic service."""
 
     pattern_uuid = HAPTIC_PATTERN_UUID
 
@@ -163,3 +163,4 @@ def _coerce_pattern(pattern: HapticPatternInput) -> HapticPattern:
     if isinstance(pattern, HapticPattern):
         return pattern
     return HapticPattern.from_frames(pattern)
+

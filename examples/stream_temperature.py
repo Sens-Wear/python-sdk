@@ -1,11 +1,11 @@
 import argparse
 import asyncio
 
-from senswar import SenswarClient, TemperatureSample
+from senswear import SenswearClient, TemperatureSample
 
 
 async def run(device: str | None, timeout: float, duration: float, sampling_rate_hz: int | None) -> None:
-    async with SenswarClient(device, timeout=timeout) as client:
+    async with SenswearClient(device, timeout=timeout) as client:
         if sampling_rate_hz is not None:
             await client.temperature.set_sampling_rate_hz(sampling_rate_hz)
 
@@ -21,7 +21,7 @@ async def run(device: str | None, timeout: float, duration: float, sampling_rate
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Stream Senswar temperature notifications over BLE.")
+    parser = argparse.ArgumentParser(description="Stream SensWear temperature notifications over BLE.")
     parser.add_argument(
         "device",
         nargs="?",
@@ -36,3 +36,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

@@ -1,21 +1,22 @@
 """SDK exception types."""
 
 
-class SenswarError(Exception):
+class SenswearError(Exception):
     """Base exception for SDK errors."""
 
 
-class SenswarDependencyError(SenswarError, ImportError):
+class SenswearDependencyError(SenswearError, ImportError):
     """Raised when an optional runtime dependency is missing."""
 
 
-class DeviceNotFoundError(SenswarError):
-    """Raised when no matching Senswar BLE peripheral is discovered."""
+class DeviceNotFoundError(SenswearError):
+    """Raised when no matching SensWear BLE peripheral is discovered."""
 
 
-class NotConnectedError(SenswarError):
+class NotConnectedError(SenswearError):
     """Raised when a GATT operation is attempted before connecting."""
 
 
-class ProtocolError(SenswarError):
+class ProtocolError(SenswearError):
     """Raised when firmware data does not match the expected protocol."""
+
