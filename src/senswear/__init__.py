@@ -8,30 +8,75 @@ from .exceptions import (
     SenswearDependencyError,
     SenswearError,
 )
-from .modules.battery import BatteryGaugeState
-from .modules.charger import ChargerState
-from .modules.haptic import HapticFrame, HapticPattern
-from .modules.imu import LinearAccelerationSample, QuaternionSample
-from .modules.led import LedColor
-from .modules.temperature import TemperatureSample
+from .modules import (
+    ActivitySample,
+    ActivityTransition,
+    BatteryGaugeState,
+    BatteryLevel,
+    BatteryLevelStatus,
+    ChargeLevel,
+    ChargeState,
+    ChargerState,
+    CurrentTime,
+    GestureSample,
+    GyroscopeSample,
+    HapticFrame,
+    HapticPattern,
+    ImuActivity,
+    ImuGesture,
+    LedColor,
+    LinearAccelerationSample,
+    LocalTimeInformation,
+    PowerSourceState,
+    PpgSample,
+    QuaternionSample,
+    RawTouchSample,
+    ReferenceTimeInformation,
+    TemperatureMeasurement,
+    TemperatureSample,
+    TemperatureType,
+    TouchGesture,
+    TouchGestureSample,
+    TouchState,
+)
 
 __all__ = [
+    "ActivitySample",
+    "ActivityTransition",
     "BatteryGaugeState",
+    "BatteryLevel",
+    "BatteryLevelStatus",
+    "ChargeLevel",
+    "ChargeState",
     "ChargerState",
+    "CurrentTime",
     "DeviceNotFoundError",
     "DiscoveredDevice",
+    "GestureSample",
+    "GyroscopeSample",
     "HapticFrame",
     "HapticPattern",
-    "NotConnectedError",
-    "ProtocolError",
+    "ImuActivity",
+    "ImuGesture",
     "LedColor",
     "LinearAccelerationSample",
+    "LocalTimeInformation",
+    "NotConnectedError",
+    "PowerSourceState",
+    "PpgSample",
+    "ProtocolError",
     "QuaternionSample",
+    "RawTouchSample",
+    "ReferenceTimeInformation",
     "SenswearClient",
     "SenswearDependencyError",
     "SenswearError",
+    "TemperatureMeasurement",
     "TemperatureSample",
+    "TemperatureType",
+    "TouchGesture",
+    "TouchGestureSample",
+    "TouchState",
 ]
 
-__version__ = "0.1.1"
-
+__version__ = "0.2.0"

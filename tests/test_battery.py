@@ -1,5 +1,4 @@
 import pathlib
-import struct
 import sys
 import unittest
 
@@ -7,36 +6,43 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from senswear.exceptions import ProtocolError
-from senswear.modules.battery import BatteryGaugeState, GAUGE_STATE_LENGTH
+from senswear.modules.battery import BatteryLevel, BatteryModule
+from senswear.uuids import POWER_BATTERY_LEVEL_UUID
 
 
-class BatteryGaugeStateTests(unittest.TestCase):
-    def test_from_bytes_decodes_firmware_layout(self) -> None:
-        payload = struct.pack("<hHhhHHHH", 234, 3790, -42, -160, 870, 220, 450, 180)
+class FakeGattClient:
+    def __init__(self) -> None:
+        self.started = {}
+        self.stopped = []
 
-        state = BatteryGaugeState.from_bytes(payload)
+    async def read_gatt_char(self, uuid):
+        self.read_uuid = uuid
+        return b"\x57"
 
-        self.assertEqual(state.temperature_deci_c, 234)
-        self.assertEqual(state.voltage_mv, 3790)
-        self.assertEqual(state.average_current_ma, -42)
-        self.assertEqual(state.average_power_mw, -160)
-        self.assertEqual(state.state_of_charge_deci_percent, 870)
-        self.assertEqual(state.nominal_available_capacity_mah, 220)
-        self.assertEqual(state.full_battery_capacity_mah, 450)
-        self.assertEqual(state.remaining_capacity_mah, 180)
-        self.assertEqual(state.temperature_c, 23.4)
-        self.assertEqual(state.state_of_charge_percent, 87.0)
+    async def start_notify(self, uuid, callback):
+        self.started[uuid] = callback
 
-    def test_from_bytes_rejects_wrong_length(self) -> None:
+    async def stop_notify(self, uuid):
+        self.stopped.append(uuid)
+
+
+class BatteryTests(unittest.IsolatedAsyncioTestCase):
+    def test_decodes_standard_battery_level(self) -> None:
+        self.assertEqual(BatteryLevel.from_bytes(b"\x64").percent, 100)
         with self.assertRaises(ProtocolError):
-            BatteryGaugeState.from_bytes(bytes(GAUGE_STATE_LENGTH - 1))
+            BatteryLevel.from_bytes(b"\x01\x02")
 
-    def test_zero_state_detects_firmware_fallback(self) -> None:
-        state = BatteryGaugeState.from_bytes(bytes(GAUGE_STATE_LENGTH))
-
-        self.assertTrue(state.is_zero_state)
+    async def test_read_and_subscribe(self) -> None:
+        client = FakeGattClient()
+        module = BatteryModule(client)
+        self.assertEqual((await module.read()).percent, 87)
+        samples = []
+        await module.subscribe(samples.append)
+        client.started[POWER_BATTERY_LEVEL_UUID](None, bytearray(b"\x2a"))
+        self.assertEqual(samples, [BatteryLevel(42)])
+        await module.unsubscribe()
+        self.assertEqual(client.stopped, [POWER_BATTERY_LEVEL_UUID])
 
 
 if __name__ == "__main__":
     unittest.main()
-

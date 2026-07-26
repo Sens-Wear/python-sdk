@@ -9,7 +9,7 @@ from ..uuids import HAPTIC_PATTERN_UUID
 
 HAPTIC_PATTERN_VERSION = 1
 HAPTIC_PATTERN_FLAGS = 0
-HAPTIC_MAX_FRAMES = 64
+HAPTIC_MAX_FRAMES = 32
 HAPTIC_PATTERN_HEADER_FORMAT = "<BBH"
 HAPTIC_FRAME_FORMAT = "<HB"
 HAPTIC_PATTERN_HEADER_LENGTH = struct.calcsize(HAPTIC_PATTERN_HEADER_FORMAT)
@@ -26,8 +26,7 @@ class _GattClient(Protocol):
         data: bytes,
         *,
         response: bool = True,
-    ) -> None:
-        ...
+    ) -> None: ...
 
 
 @dataclass(frozen=True)
@@ -49,13 +48,17 @@ class HapticFrame:
             return frame
         if isinstance(frame, tuple) and len(frame) == 2:
             return cls(duration_ms=frame[0], intensity=frame[1])
-        raise TypeError("frame must be HapticFrame or a (duration_ms, intensity) tuple.")
+        raise TypeError(
+            "frame must be HapticFrame or a (duration_ms, intensity) tuple."
+        )
 
     @classmethod
     def from_bytes(cls, payload: bytes | bytearray | memoryview) -> "HapticFrame":
         data = bytes(payload)
         if len(data) != HAPTIC_FRAME_LENGTH:
-            raise ProtocolError(f"Haptic frame payload must be {HAPTIC_FRAME_LENGTH} bytes, got {len(data)}.")
+            raise ProtocolError(
+                f"Haptic frame payload must be {HAPTIC_FRAME_LENGTH} bytes, got {len(data)}."
+            )
         return cls(*struct.unpack(HAPTIC_FRAME_FORMAT, data))
 
     def to_bytes(self) -> bytes:
@@ -76,7 +79,9 @@ class HapticPattern:
 
     def __post_init__(self) -> None:
         if not 1 <= len(self.frames) <= HAPTIC_MAX_FRAMES:
-            raise ValueError(f"haptic patterns must contain 1 to {HAPTIC_MAX_FRAMES} frames.")
+            raise ValueError(
+                f"haptic patterns must contain 1 to {HAPTIC_MAX_FRAMES} frames."
+            )
 
     @classmethod
     def from_frames(cls, frames: Iterable[HapticFrameInput]) -> "HapticPattern":
@@ -99,16 +104,24 @@ class HapticPattern:
         if flags != HAPTIC_PATTERN_FLAGS:
             raise ProtocolError(f"Unsupported haptic pattern flags {flags}.")
         if frame_count == 0 or frame_count > HAPTIC_MAX_FRAMES:
-            raise ProtocolError(f"Haptic pattern frame count must be 1 to {HAPTIC_MAX_FRAMES}.")
+            raise ProtocolError(
+                f"Haptic pattern frame count must be 1 to {HAPTIC_MAX_FRAMES}."
+            )
 
-        expected_len = HAPTIC_PATTERN_HEADER_LENGTH + (frame_count * HAPTIC_FRAME_LENGTH)
+        expected_len = HAPTIC_PATTERN_HEADER_LENGTH + (
+            frame_count * HAPTIC_FRAME_LENGTH
+        )
         if len(data) != expected_len:
-            raise ProtocolError(f"Haptic pattern payload must be {expected_len} bytes, got {len(data)}.")
+            raise ProtocolError(
+                f"Haptic pattern payload must be {expected_len} bytes, got {len(data)}."
+            )
 
         frames = []
         for index in range(frame_count):
             offset = HAPTIC_PATTERN_HEADER_LENGTH + (index * HAPTIC_FRAME_LENGTH)
-            frames.append(HapticFrame.from_bytes(data[offset : offset + HAPTIC_FRAME_LENGTH]))
+            frames.append(
+                HapticFrame.from_bytes(data[offset : offset + HAPTIC_FRAME_LENGTH])
+            )
 
         return cls(tuple(frames))
 
@@ -153,14 +166,17 @@ class HapticModule:
             response=response,
         )
 
-    async def vibrate(self, duration_ms: int, intensity: int = 255, *, response: bool = True) -> None:
+    async def vibrate(
+        self, duration_ms: int, intensity: int = 255, *, response: bool = True
+    ) -> None:
         """Play one constant-intensity vibration frame."""
 
-        await self.play(HapticPattern((HapticFrame(duration_ms, intensity),)), response=response)
+        await self.play(
+            HapticPattern((HapticFrame(duration_ms, intensity),)), response=response
+        )
 
 
 def _coerce_pattern(pattern: HapticPatternInput) -> HapticPattern:
     if isinstance(pattern, HapticPattern):
         return pattern
     return HapticPattern.from_frames(pattern)
-

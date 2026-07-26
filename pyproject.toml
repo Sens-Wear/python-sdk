@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "senswear"
-version = "0.1.1"
+version = "0.2.0"
 description = "Python SDK for connecting to SensWear hardware over BLE."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -38,4 +38,7 @@ Homepage = "https://sens-wear.com"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/senswear"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = ["E402"]
 

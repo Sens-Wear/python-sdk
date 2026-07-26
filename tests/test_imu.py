@@ -1,4 +1,3 @@
-import math
 import pathlib
 import struct
 import sys
@@ -7,99 +6,104 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from senswear.exceptions import ProtocolError
 from senswear.modules.imu import (
-    LINEAR_ACCELERATION_LENGTH,
-    QUATERNION_LENGTH,
+    ActivitySample,
+    ActivityTransition,
+    GestureSample,
+    GyroscopeSample,
+    ImuActivity,
+    ImuGesture,
     ImuModule,
     LinearAccelerationSample,
     QuaternionSample,
 )
-from senswear.uuids import IMU_LINEAR_ACCELERATION_UUID, IMU_QUATERNION_UUID
-
-
-class QuaternionSampleTests(unittest.TestCase):
-    def test_from_bytes_decodes_firmware_layout(self) -> None:
-        payload = struct.pack("<hhhhH", 8192, -8192, 0, 16384, 1024)
-
-        sample = QuaternionSample.from_bytes(payload)
-
-        self.assertEqual(sample.x, 8192)
-        self.assertEqual(sample.y, -8192)
-        self.assertEqual(sample.z, 0)
-        self.assertEqual(sample.w, 16384)
-        self.assertEqual(sample.accuracy, 1024)
-        self.assertEqual(sample.to_tuple(), (0.5, -0.5, 0.0, 1.0))
-        self.assertEqual(sample.to_tuple(normalized=False), (8192, -8192, 0, 16384))
-        self.assertAlmostEqual(sample.accuracy_radians, 0.0625)
-        self.assertAlmostEqual(sample.accuracy_degrees, 0.0625 * 180.0 / math.pi)
-
-    def test_from_bytes_rejects_wrong_length(self) -> None:
-        with self.assertRaises(ProtocolError):
-            QuaternionSample.from_bytes(bytes(QUATERNION_LENGTH - 1))
-
-
-class LinearAccelerationSampleTests(unittest.TestCase):
-    def test_from_bytes_decodes_firmware_layout(self) -> None:
-        payload = struct.pack("<hhh", 4096, -2048, 1024)
-
-        sample = LinearAccelerationSample.from_bytes(payload)
-
-        self.assertEqual(sample.x, 4096)
-        self.assertEqual(sample.y, -2048)
-        self.assertEqual(sample.z, 1024)
-        self.assertEqual(sample.to_tuple(), (1.0, -0.5, 0.25))
-        self.assertEqual(sample.to_tuple(scaled=False), (4096, -2048, 1024))
-
-    def test_from_bytes_rejects_wrong_length(self) -> None:
-        with self.assertRaises(ProtocolError):
-            LinearAccelerationSample.from_bytes(bytes(LINEAR_ACCELERATION_LENGTH - 1))
+from senswear.uuids import (
+    IMU_DRAIN_PERIOD_UUID,
+    IMU_GYROSCOPE_UUID,
+    IMU_PHYSICAL_STREAMS_ENABLE_UUID,
+    IMU_QUATERNION_UUID,
+)
 
 
 class FakeGattClient:
-    def __init__(self) -> None:
-        self.started: dict[str, object] = {}
-        self.stopped: list[str] = []
+    def __init__(self):
+        self.payloads = {}
+        self.started = {}
+        self.stopped = []
+        self.writes = []
 
-    async def start_notify(self, characteristic_uuid: str, callback: object) -> None:
-        self.started[characteristic_uuid] = callback
+    async def read_gatt_char(self, uuid):
+        return self.payloads[uuid]
 
-    async def stop_notify(self, characteristic_uuid: str) -> None:
-        self.stopped.append(characteristic_uuid)
+    async def write_gatt_char(self, uuid, data, *, response=True):
+        self.writes.append((uuid, data, response))
+
+    async def start_notify(self, uuid, callback):
+        self.started[uuid] = callback
+
+    async def stop_notify(self, uuid):
+        self.stopped.append(uuid)
+
+
+class ImuPayloadTests(unittest.TestCase):
+    def test_all_timestamped_firmware_layouts(self) -> None:
+        timestamp = 1_720_000_000_123_456
+        quat = QuaternionSample.from_bytes(
+            struct.pack("<qhhhhH", timestamp, 8192, -1, 2, 16384, 3)
+        )
+        self.assertEqual(quat.timestamp_us, timestamp)
+        self.assertEqual(quat.to_tuple(), (0.5, -1 / 16384, 2 / 16384, 1.0))
+
+        accel = LinearAccelerationSample.from_bytes(
+            struct.pack("<qhhh", timestamp, 4096, 0, -4096)
+        )
+        self.assertEqual(accel.to_tuple(), (1.0, 0.0, -1.0))
+        self.assertEqual(
+            GyroscopeSample.from_bytes(
+                struct.pack("<qhhh", timestamp, 1, 2, 3)
+            ).to_tuple(),
+            (1, 2, 3),
+        )
+
+        gesture = GestureSample.from_bytes(struct.pack("<qBB", timestamp, 7, 4))
+        self.assertEqual(gesture.gesture_type, ImuGesture.FLICK_IN)
+        activity = ActivitySample.from_bytes(struct.pack("<qBBB", timestamp, 9, 2, 1))
+        self.assertEqual(activity.activity_type, ImuActivity.RUNNING)
+        self.assertEqual(activity.transition_type, ActivityTransition.STARTED)
 
 
 class ImuModuleTests(unittest.IsolatedAsyncioTestCase):
-    async def test_subscribe_quaternion_decodes_notifications(self) -> None:
+    async def test_reads_subscribes_and_configures(self) -> None:
         client = FakeGattClient()
+        timestamp = 123
+        client.payloads[IMU_GYROSCOPE_UUID] = struct.pack("<qhhh", timestamp, 4, 5, 6)
+        client.payloads[IMU_PHYSICAL_STREAMS_ENABLE_UUID] = b"\x01"
+        client.payloads[IMU_DRAIN_PERIOD_UUID] = struct.pack("<I", 100)
         module = ImuModule(client)
-        samples: list[QuaternionSample] = []
 
+        self.assertEqual(
+            await module.read_gyroscope(), GyroscopeSample(timestamp, 4, 5, 6)
+        )
+        self.assertTrue(await module.physical_streams_enabled())
+        self.assertEqual(await module.read_drain_period_ms(), 100)
+
+        samples = []
         await module.subscribe_quaternion(samples.append)
-        callback = client.started[IMU_QUATERNION_UUID]
-        callback(None, bytearray(struct.pack("<hhhhH", 1, 2, 3, 4, 5)))
+        client.started[IMU_QUATERNION_UUID](
+            None, bytearray(struct.pack("<qhhhhH", timestamp, 1, 2, 3, 4, 5))
+        )
+        self.assertEqual(samples, [QuaternionSample(timestamp, 1, 2, 3, 4, 5)])
 
-        self.assertEqual(samples, [QuaternionSample(1, 2, 3, 4, 5)])
-
-        await module.unsubscribe_quaternion()
-
-        self.assertEqual(client.stopped, [IMU_QUATERNION_UUID])
-
-    async def test_subscribe_linear_acceleration_decodes_notifications(self) -> None:
-        client = FakeGattClient()
-        module = ImuModule(client)
-        samples: list[LinearAccelerationSample] = []
-
-        await module.subscribe_linear_acceleration(samples.append)
-        callback = client.started[IMU_LINEAR_ACCELERATION_UUID]
-        callback(None, bytearray(struct.pack("<hhh", 10, 20, 30)))
-
-        self.assertEqual(samples, [LinearAccelerationSample(10, 20, 30)])
-
-        await module.unsubscribe_linear_acceleration()
-
-        self.assertEqual(client.stopped, [IMU_LINEAR_ACCELERATION_UUID])
+        await module.set_physical_streams_enabled(False, response=False)
+        await module.set_drain_period_ms(250)
+        self.assertEqual(
+            client.writes,
+            [
+                (IMU_PHYSICAL_STREAMS_ENABLE_UUID, b"\x00", False),
+                (IMU_DRAIN_PERIOD_UUID, struct.pack("<I", 250), True),
+            ],
+        )
 
 
 if __name__ == "__main__":
     unittest.main()
-

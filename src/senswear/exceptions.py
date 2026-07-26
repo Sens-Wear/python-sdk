@@ -19,4 +19,3 @@ class NotConnectedError(SenswearError):
 
 class ProtocolError(SenswearError):
     """Raised when firmware data does not match the expected protocol."""
-

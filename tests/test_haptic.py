@@ -42,7 +42,9 @@ class HapticPatternTests(unittest.TestCase):
 
         payload = pattern.to_bytes()
 
-        self.assertEqual(payload, bytes([HAPTIC_PATTERN_VERSION, 0, 2, 0, 100, 0, 255, 50, 0, 0]))
+        self.assertEqual(
+            payload, bytes([HAPTIC_PATTERN_VERSION, 0, 2, 0, 100, 0, 255, 50, 0, 0])
+        )
         self.assertEqual(pattern.total_duration_ms, 150)
         self.assertEqual(HapticPattern.from_bytes(payload), pattern)
 
@@ -69,7 +71,9 @@ class FakeGattClient:
     def __init__(self) -> None:
         self.writes: list[tuple[str, bytes, bool]] = []
 
-    async def write_gatt_char(self, characteristic_uuid: str, data: bytes, *, response: bool = True) -> None:
+    async def write_gatt_char(
+        self, characteristic_uuid: str, data: bytes, *, response: bool = True
+    ) -> None:
         self.writes.append((characteristic_uuid, data, response))
 
 
@@ -91,9 +95,11 @@ class HapticModuleTests(unittest.IsolatedAsyncioTestCase):
 
         await module.vibrate(75, intensity=180)
 
-        self.assertEqual(client.writes, [(HAPTIC_PATTERN_UUID, bytes([1, 0, 1, 0, 75, 0, 180]), True)])
+        self.assertEqual(
+            client.writes,
+            [(HAPTIC_PATTERN_UUID, bytes([1, 0, 1, 0, 75, 0, 180]), True)],
+        )
 
 
 if __name__ == "__main__":
     unittest.main()
-

@@ -4,12 +4,15 @@ from dataclasses import dataclass
 from typing import Any, Callable, Iterable
 
 from .exceptions import DeviceNotFoundError, NotConnectedError, SenswearDependencyError
-from .modules.battery import BatteryGaugeModule
-from .modules.charger import ChargerModule
+from .modules.battery import BatteryModule
+from .modules.charger import PowerStatusModule
 from .modules.haptic import HapticModule
 from .modules.imu import ImuModule
 from .modules.led import LedModule
+from .modules.ppg import PpgModule
 from .modules.temperature import TemperatureModule
+from .modules.time import TimeModule
+from .modules.touch import TouchModule
 
 DEFAULT_NAME_PREFIXES = ("Sens Wear", "SensWear", "SenseWear")
 NotifyCallback = Callable[[object, bytearray], None]
@@ -51,12 +54,18 @@ class SenswearClient:
         self.name_prefixes = tuple(name_prefixes)
         self._client: Any | None = None
         self._device: Any | None = None
-        self.battery = BatteryGaugeModule(self)
-        self.charger = ChargerModule(self)
+        self.battery = BatteryModule(self)
+        self.power = PowerStatusModule(self)
+        # Kept as a compatibility alias; the firmware now exposes standardized
+        # Battery Level Status rather than the old raw charger bitfield.
+        self.charger = self.power
         self.haptic = HapticModule(self)
         self.imu = ImuModule(self)
         self.led = LedModule(self)
+        self.ppg = PpgModule(self)
         self.temperature = TemperatureModule(self)
+        self.time = TimeModule(self)
+        self.touch = TouchModule(self)
 
     async def __aenter__(self) -> "SenswearClient":
         return await self.connect()
@@ -150,7 +159,9 @@ class SenswearClient:
         client = self._require_client()
         await client.write_gatt_char(characteristic_uuid, data, response=response)
 
-    async def start_notify(self, characteristic_uuid: str, callback: NotifyCallback) -> None:
+    async def start_notify(
+        self, characteristic_uuid: str, callback: NotifyCallback
+    ) -> None:
         """Subscribe to notifications for a GATT characteristic."""
 
         client = self._require_client()
@@ -168,7 +179,9 @@ class SenswearClient:
 
         if self.address_or_name is None:
             for device in devices:
-                if _name_matches_prefix(getattr(device, "name", None), self.name_prefixes):
+                if _name_matches_prefix(
+                    getattr(device, "name", None), self.name_prefixes
+                ):
                     return device
             raise DeviceNotFoundError(
                 "No SensWear device was found. Make sure the device is powered, "
@@ -187,13 +200,15 @@ class SenswearClient:
 
     def _require_client(self) -> Any:
         if not self.is_connected or self._client is None:
-            raise NotConnectedError("Connect to a SensWear device before using GATT operations.")
+            raise NotConnectedError(
+                "Connect to a SensWear device before using GATT operations."
+            )
         return self._client
 
 
 def _load_bleak() -> tuple[type[Any], type[Any]]:
     try:
-        from bleak import BleakClient, BleakScanner
+        from bleak import BleakClient, BleakScanner  # type: ignore[import-not-found]
     except ImportError as exc:
         raise SenswearDependencyError(
             "The SensWear SDK needs the 'bleak' package for BLE access. "
@@ -219,10 +234,11 @@ def _name_matches_prefix(name: str | None, prefixes: Iterable[str]) -> bool:
 def _device_matches_target(device: object, target: str) -> bool:
     address = str(getattr(device, "address", ""))
     name = getattr(device, "name", None)
-    return address.lower() == target.lower() or (name is not None and str(name) == target)
+    return address.lower() == target.lower() or (
+        name is not None and str(name) == target
+    )
 
 
 def _looks_like_ble_identifier(value: str) -> bool:
     # BLE addresses on Windows/Linux and CoreBluetooth UUIDs on macOS both use separators.
     return ":" in value or "-" in value
-
