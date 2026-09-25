@@ -15,6 +15,7 @@ from ._common import (
     GattClient,
     NotificationHandler,
     notification_handler,
+    require_write_response,
     unpack_exact,
 )
 
@@ -102,6 +103,7 @@ class TimeModule:
     async def set(
         self, value: datetime, *, adjust_reason: int = 0, response: bool = True
     ) -> None:
+        require_write_response(response)
         if not isinstance(adjust_reason, int) or not 0 <= adjust_reason <= 0xFF:
             raise ValueError("adjust_reason must be an integer between 0 and 255.")
         current = CurrentTime(_as_utc(value), 0, 0, adjust_reason)

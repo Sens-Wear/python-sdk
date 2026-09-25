@@ -82,11 +82,11 @@ class HapticModuleTests(unittest.IsolatedAsyncioTestCase):
         client = FakeGattClient()
         module = HapticModule(client)
 
-        await module.play([(25, 100), (25, 0)], response=False)
+        await module.play([(25, 100), (25, 0)])
 
         self.assertEqual(
             client.writes,
-            [(HAPTIC_PATTERN_UUID, bytes([1, 0, 2, 0, 25, 0, 100, 25, 0, 0]), False)],
+            [(HAPTIC_PATTERN_UUID, bytes([1, 0, 2, 0, 25, 0, 100, 25, 0, 0]), True)],
         )
 
     async def test_vibrate_writes_single_frame_pattern(self) -> None:

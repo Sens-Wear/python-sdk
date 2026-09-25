@@ -19,6 +19,7 @@ from ._common import (
     decode_bool,
     encode_bool,
     notification_handler,
+    require_write_response,
     unpack_exact,
 )
 
@@ -29,6 +30,13 @@ TOUCH_RAW_DATA_FORMAT = "<q?xHHB"
 TOUCH_STATE_LENGTH = 13
 TOUCH_GESTURE_LENGTH = 10
 TOUCH_RAW_DATA_LENGTH = 16
+
+# Physical slider geometry, from the first pad at the connector to the tip.
+TOUCH_ELECTRODE_COUNT = 15
+TOUCH_ELECTRODE_PITCH = 64
+TOUCH_ELECTRODE_PITCH_MM = 3
+TOUCH_POSITION_MAX = (TOUCH_ELECTRODE_COUNT - 1) * TOUCH_ELECTRODE_PITCH
+TOUCH_LENGTH_MM = (TOUCH_ELECTRODE_COUNT - 1) * TOUCH_ELECTRODE_PITCH_MM
 
 
 class TouchGesture(IntEnum):
@@ -48,6 +56,12 @@ class TouchGesture(IntEnum):
 
 @dataclass(frozen=True)
 class TouchState:
+    """Host-decoded slider contact; current firmware sends X 0..896 and Y zero.
+
+    Raw coordinates are retained for diagnostics and older firmware. Position
+    helpers return None for a release or a sample outside the 1D contract.
+    """
+
     timestamp_us: int
     touched: bool
     x: int
@@ -61,9 +75,33 @@ class TouchState:
     def timestamp(self) -> datetime:
         return datetime.fromtimestamp(self.timestamp_us / 1_000_000, tz=timezone.utc)
 
+    @property
+    def position_normalized(self) -> float | None:
+        """Position from connector (0.0) to tip (1.0), while touched."""
+
+        if (
+            not self.touched
+            or self.y != 0
+            or not isinstance(self.x, int)
+            or isinstance(self.x, bool)
+            or not 0 <= self.x <= TOUCH_POSITION_MAX
+        ):
+            return None
+        return self.x / TOUCH_POSITION_MAX
+
+    @property
+    def position_mm(self) -> float | None:
+        """Distance from the connector-end pad center in millimeters."""
+
+        if self.position_normalized is None:
+            return None
+        return self.x * TOUCH_ELECTRODE_PITCH_MM / TOUCH_ELECTRODE_PITCH
+
 
 @dataclass(frozen=True)
 class TouchGestureSample:
+    """Host gesture, with normalized ID and MTCH6102-compatible encoded byte."""
+
     timestamp_us: int
     gesture: int
     gesture_state: int
@@ -81,13 +119,19 @@ class TouchGestureSample:
         except ValueError:
             return self.gesture
 
+    @property
+    def timestamp(self) -> datetime:
+        return datetime.fromtimestamp(self.timestamp_us / 1_000_000, tz=timezone.utc)
+
 
 @dataclass(frozen=True)
-class RawTouchSample:
-    timestamp_us: int
-    touched: bool
-    x: int
-    y: int
+class RawTouchSample(TouchState):
+    """Slider contact plus the native controller TOUCHSTATE diagnostic byte.
+
+    Use touched for contact detection. The native TCH bit may disagree with the
+    host's 1D decoder. This payload does not contain raw electrode measurements.
+    """
+
     touch_state: int
 
     @classmethod
@@ -172,6 +216,7 @@ class TouchModule:
     async def set_sampling_enabled(
         self, enabled: bool, *, response: bool = True
     ) -> None:
+        require_write_response(response)
         await self._client.write_gatt_char(
             TOUCH_SAMPLING_ENABLE_UUID,
             encode_bool(enabled, "enabled"),

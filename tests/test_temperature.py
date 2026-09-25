@@ -13,6 +13,7 @@ from senswear.modules.temperature import (
     TemperatureModule,
     TemperatureType,
 )
+from senswear.exceptions import ProtocolError
 from senswear.uuids import (
     TEMPERATURE_MEASUREMENT_INTERVAL_UUID,
     TEMPERATURE_MEASUREMENT_UUID,
@@ -29,6 +30,7 @@ class FakeGattClient:
     def __init__(self):
         self.started = {}
         self.writes = []
+        self.stopped = []
 
     async def read_gatt_char(self, uuid):
         return struct.pack("<H", 60)
@@ -40,7 +42,8 @@ class FakeGattClient:
         self.started[uuid] = callback
 
     async def stop_notify(self, uuid):
-        self.stopped = uuid
+        self.stopped.append(uuid)
+        del self.started[uuid]
 
 
 class TemperatureTests(unittest.IsolatedAsyncioTestCase):
@@ -56,10 +59,10 @@ class TemperatureTests(unittest.IsolatedAsyncioTestCase):
         client = FakeGattClient()
         module = TemperatureModule(client)
         self.assertEqual(await module.read_measurement_interval(), 60)
-        await module.set_measurement_interval(120, response=False)
+        await module.set_measurement_interval(120)
         self.assertEqual(
             client.writes,
-            [(TEMPERATURE_MEASUREMENT_INTERVAL_UUID, b"\x78\x00", False)],
+            [(TEMPERATURE_MEASUREMENT_INTERVAL_UUID, b"\x78\x00", True)],
         )
 
     async def test_interval_accepts_disabled_and_largest_whole_minute(self) -> None:
@@ -86,6 +89,34 @@ class TemperatureTests(unittest.IsolatedAsyncioTestCase):
             None, bytearray(firmware_measurement(-1250))
         )
         self.assertAlmostEqual(samples[0].temperature_c, -1.25)
+
+    async def test_interval_indications_are_independent_and_replaced(self) -> None:
+        client = FakeGattClient()
+        module = TemperatureModule(client)
+        samples, old_intervals, intervals = [], [], []
+        await module.subscribe(samples.append)
+        await module.subscribe_measurement_interval(old_intervals.append)
+        await module.subscribe_measurement_interval(intervals.append)
+        for seconds in (0, 60, 65520, 65535):
+            client.started[TEMPERATURE_MEASUREMENT_INTERVAL_UUID](
+                None, bytearray(struct.pack("<H", seconds))
+            )
+        self.assertEqual(intervals, [0, 60, 65520, 65535])
+        self.assertEqual(old_intervals, [])
+        self.assertEqual(samples, [])
+        for payload in (b"", b"\x00", b"\x00\x00\x00"):
+            with self.assertRaises(ProtocolError):
+                client.started[TEMPERATURE_MEASUREMENT_INTERVAL_UUID](None, payload)
+        await module.unsubscribe_measurement_interval()
+        self.assertIn(TEMPERATURE_MEASUREMENT_UUID, client.started)
+        await module.subscribe_measurement_interval(intervals.append)
+        await module.unsubscribe()
+        self.assertIn(TEMPERATURE_MEASUREMENT_INTERVAL_UUID, client.started)
+        await module.unsubscribe_all()
+        self.assertEqual(client.started, {})
+        stopped = list(client.stopped)
+        await module.unsubscribe_all()
+        self.assertEqual(client.stopped, stopped)
 
 
 if __name__ == "__main__":

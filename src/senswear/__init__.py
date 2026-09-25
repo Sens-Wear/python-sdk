@@ -9,6 +9,11 @@ from .exceptions import (
     SenswearError,
 )
 from .modules import (
+    TOUCH_ELECTRODE_COUNT,
+    TOUCH_ELECTRODE_PITCH,
+    TOUCH_ELECTRODE_PITCH_MM,
+    TOUCH_LENGTH_MM,
+    TOUCH_POSITION_MAX,
     ActivitySample,
     ActivityTransition,
     BatteryGaugeState,
@@ -18,6 +23,11 @@ from .modules import (
     ChargeState,
     ChargerState,
     CurrentTime,
+    DaughterBoard,
+    DeviceCapabilities,
+    DeviceFeature,
+    DeviceInfo,
+    DeviceInfoModule,
     GestureSample,
     GyroscopeSample,
     HapticFrame,
@@ -41,6 +51,11 @@ from .modules import (
 )
 
 __all__ = [
+    "DaughterBoard",
+    "DeviceCapabilities",
+    "DeviceFeature",
+    "DeviceInfo",
+    "DeviceInfoModule",
     "ActivitySample",
     "ActivityTransition",
     "BatteryGaugeState",
@@ -74,9 +89,14 @@ __all__ = [
     "TemperatureMeasurement",
     "TemperatureSample",
     "TemperatureType",
+    "TOUCH_ELECTRODE_COUNT",
+    "TOUCH_ELECTRODE_PITCH",
+    "TOUCH_ELECTRODE_PITCH_MM",
+    "TOUCH_LENGTH_MM",
+    "TOUCH_POSITION_MAX",
     "TouchGesture",
     "TouchGestureSample",
     "TouchState",
 ]
 
-__version__ = "0.2.0"
+__version__ = "0.4.0"

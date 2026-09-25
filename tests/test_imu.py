@@ -94,12 +94,12 @@ class ImuModuleTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(samples, [QuaternionSample(timestamp, 1, 2, 3, 4, 5)])
 
-        await module.set_physical_streams_enabled(False, response=False)
+        await module.set_physical_streams_enabled(False)
         await module.set_drain_period_ms(250)
         self.assertEqual(
             client.writes,
             [
-                (IMU_PHYSICAL_STREAMS_ENABLE_UUID, b"\x00", False),
+                (IMU_PHYSICAL_STREAMS_ENABLE_UUID, b"\x00", True),
                 (IMU_DRAIN_PERIOD_UUID, struct.pack("<I", 250), True),
             ],
         )

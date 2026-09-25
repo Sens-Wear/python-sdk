@@ -6,6 +6,7 @@ applications that communicate with the current SensWear firmware. It uses
 
 The SDK provides typed Python objects for:
 
+- firmware revision and compiled daughter-board/feature support;
 - battery level and charging state;
 - UTC clock synchronization;
 - body-temperature measurements;
@@ -26,7 +27,17 @@ debugging or implementing a client in another language.
 > exposes all module properties, but a GATT operation fails if the connected
 > firmware does not contain that service or its hardware is unavailable. An
 > application intended for several SensWear hardware configurations should
-> handle Bleak GATT errors and treat optional sensors as capabilities.
+> read `device.device_info.read_capabilities()` before using optional sensors and
+> still handle Bleak GATT errors. Build capabilities do not prove physical
+> attachment or successful hardware initialization.
+
+## Changes in 0.4.0
+
+`SenswearClient.device_info` reads the real firmware revision and versioned build
+capabilities. The addition uses new read-only endpoints and leaves all existing
+sensor/actuator payloads unchanged. Older firmware that lacks these endpoints
+raises the underlying GATT error; the SDK does not invent a version or infer
+daughter boards from advertised services.
 
 ## Installation
 
@@ -69,6 +80,7 @@ The client exposes these modules:
 
 | Property | Capability |
 | --- | --- |
+| `device.device_info` | Firmware revision and compiled shields/features |
 | `device.battery` | Battery percentage |
 | `device.power` | External-power, charging, charge-level, and fault status |
 | `device.charger` | Compatibility alias for `device.power` |
@@ -80,10 +92,54 @@ The client exposes these modules:
 | `device.led` | RGB LED color |
 | `device.haptic` | Real-time vibration patterns |
 
+### Firmware revision and capabilities
+
+```python
+from senswear import DaughterBoard, DeviceFeature
+
+info = await device.device_info.read()
+print(info.firmware_version)
+print(info.capabilities.shields)  # tuple of known DaughterBoard flags
+if info.capabilities.has_feature(DeviceFeature.PPG):
+    sample = await device.ppg.read_red()
+print(info.capabilities.has_shield(DaughterBoard.TOUCH))
+```
+
+`read_firmware_version()` and `read_capabilities()` are also available separately.
+The firmware revision is the UTF-8 application version from the firmware's
+`VERSION` file, read from Device Information Service `180a`, characteristic
+`2a26` (Read). It is not the SDK version. Invalid UTF-8, empty revisions, and NUL
+bytes raise `ProtocolError`.
+
+Capabilities use service `9b8e0001-6b7d-4e9f-9b0d-2d7f6e5a4c30`, characteristic
+`9b8e0002-6b7d-4e9f-9b0d-2d7f6e5a4c30` (Read only). The exact packet is 9 bytes,
+packed without padding; all multibyte integers are unsigned little-endian.
+It has no timestamp or units.
+
+| Offset | Field | Type | Meaning |
+| --- | --- | --- | --- |
+| 0 | `protocol_version` | uint8 | Schema version, currently 1 |
+| 1 | `shield_mask` | uint32 | Compiled daughter-board shield flags |
+| 5 | `feature_mask` | uint32 | Implemented firmware data/control feature flags |
+
+`DaughterBoard` flags: `HAPTIC=1`, `PPG=2`, `TEMPERATURE=4`, `TOUCH=8`.
+`DeviceFeature` flags: `IMU=1`, `LED=2`, `HAPTIC=4`, `PPG=8`, `TEMPERATURE=16`,
+`TOUCH=32`, `BATTERY=64`, `TIME=128`. Use feature flags to gate navigation or data
+operations. Shields describe what was compiled into the running firmware, not
+physical board detection or whether sampling is enabled. The PPG application
+preset also enables the temperature shield; its shield mask includes both bits.
+
+`DeviceCapabilities.from_bytes()` accepts bytes-like packets and rejects incorrect
+lengths or unsupported schema versions with `ProtocolError`. Raw masks preserve
+every bit. `unknown_shield_mask` and `unknown_feature_mask` expose future flags;
+`shields` lists known flags only. `has_shield()` and `has_feature()` accept flag
+combinations and require all requested bits. No capabilities are cached across
+connections. See [the executable example](examples/read_device_info.py).
+
 ### Discovering and selecting a device
 
 Without an argument, `SenswearClient` scans and connects to the first peripheral
-whose advertised name begins with `Sens Wear`, `SensWear`, or `SenseWear`.
+whose advertised name begins with `Sens Wear` or `SensWear`.
 
 ```python
 devices = await SenswearClient.discover(timeout=5.0)
@@ -160,14 +216,17 @@ Async callbacks are scheduled as independent `asyncio` tasks. Keep callbacks
 short or queue samples for a separate consumer; otherwise a high-rate stream can
 create more pending work than the application can process.
 
-Most write methods accept `response=True`. The default requests an acknowledged
-GATT write, which is recommended for configuration and actuator commands.
-`response=False` requests write-without-response when the characteristic and BLE
-backend support it:
+Typed write methods default to `response=True` for an acknowledged GATT write.
+Current firmware advertises write-without-response only for LED color, so other
+typed writes reject `response=False` with `ValueError` before transport. LED
+control supports both modes:
 
 ```python
 await device.led.set("#ff0000", response=False)
 ```
+
+The low-level `client.write_gatt_char()` preserves the caller's response option
+for use with other firmware contracts.
 
 ## Common data conventions
 
@@ -446,6 +505,23 @@ await device.temperature.subscribe(on_temperature)
 ...
 await device.temperature.unsubscribe()
 ```
+
+The applied measurement interval also supports indications, independently of
+temperature measurements:
+
+```python
+await device.temperature.subscribe_measurement_interval(
+    lambda seconds: print("Applied temperature interval:", seconds)
+)
+await device.temperature.set_measurement_interval(120)
+...
+await device.temperature.unsubscribe_measurement_interval()
+```
+
+Interval callbacks receive the unsigned wire value in seconds, including zero
+when scheduled measurements are disabled. `unsubscribe()` stops measurement
+indications only; `unsubscribe_all()` stops both streams. Subscribe before
+writing the interval to receive its update.
 
 ### `TemperatureMeasurement`
 
@@ -737,8 +813,8 @@ Match channels using `timestamp_ms`.
 
 ## Touch
 
-`device.touch` exposes touch presence/position and decoded gestures from the
-MTCH6102 touch controller.
+`device.touch` exposes contact and host-decoded gestures for the 15-electrode
+linear touch strip connected to the MTCH6102 controller.
 
 ### Configuration
 
@@ -748,15 +824,18 @@ print(await device.touch.sampling_enabled())
 ```
 
 Enabling sampling starts the controller and its event stream. Disabling it stops
-sampling and powers down the touch supply. The setting uses a strict Python
-`bool`.
+acquisition and places the controller in standby while retaining its supply and
+configuration. The setting uses a strict Python `bool`. Read the setting instead
+of assuming an initial state; the OOB touch build normally enables acquisition.
 
 ### Touch position
 
 ```python
 def on_touch(sample) -> None:
-    if sample.touched:
-        print(f"touch at x={sample.x}, y={sample.y}")
+    if sample.position_mm is not None:
+        print(f"touch at {sample.position_mm:.1f} mm ({sample.position_normalized:.1%})")
+    elif sample.touched:
+        print("Touch coordinates are outside the current slider contract")
     else:
         print("released")
 
@@ -770,11 +849,27 @@ await device.touch.subscribe_state(on_touch)
 | --- | --- | --- |
 | `timestamp_us` / `timestamp` | `int` / UTC `datetime` | Sample time |
 | `touched` | `bool` | Whether a touch is present |
-| `x`, `y` | `int` | Reconstructed unsigned 12-bit controller coordinates, 0–4095 |
+| `x` | `int` | Host slider coordinate, 0–896, increasing from connector to tip |
+| `y` | `int` | Reserved zero for the linear strip |
+| `position_normalized` | `float` or `None` | Active contact position from 0.0 (connector) to 1.0 (tip) |
+| `position_mm` | `float` or `None` | Distance from the connector-end pad center, 0–42 mm |
 
-When `touched` is false, firmware forces both coordinates to zero. Coordinates
-are controller-space values; applications should calibrate, orient, and scale
-them for their UI geometry.
+When `touched` is false, firmware forces both coordinates to zero. Pad centers
+are 64 coordinate units apart, with a physical pitch of 3 mm. Firmware combines
+all 15 electrodes into one position and corrects their physical wiring order.
+Applications must not apply another electrode reorder or derive position from Y.
+
+These geometry constants are exported from `senswear` and
+`senswear.modules.touch`: `TOUCH_ELECTRODE_COUNT=15`,
+`TOUCH_ELECTRODE_PITCH=64`, `TOUCH_ELECTRODE_PITCH_MM=3`,
+`TOUCH_POSITION_MAX=896`, and `TOUCH_LENGTH_MM=42`. The 42 mm span is between
+the first and last pad centers, not the overall board length. Millimeter values
+are a nominal coordinate conversion, not a calibrated finger-position accuracy.
+
+The position helpers return `None` on release, nonzero Y, or X outside 0–896.
+They do not clamp or reinterpret older 2D firmware. The parser preserves the
+original X/Y fields for diagnostics. A valid contact at X=0 has position 0.0;
+test against `None` rather than relying on truthiness.
 
 ### Touch gestures
 
@@ -785,11 +880,11 @@ them for their UI geometry.
 | `timestamp_us` / `timestamp` | Gesture time |
 | `gesture` | Normalized gesture number |
 | `gesture_type` | `TouchGesture` when recognized, otherwise raw integer |
-| `gesture_state` | Original MTCH6102 GESTURE_STATE register byte |
+| `gesture_state` | Host-generated gesture encoded using the MTCH6102 byte values |
 
-Normalized and raw gesture mappings:
+Normalized and encoded gesture mappings:
 
-| Normalized value | `TouchGesture` | Raw `gesture_state` |
+| Normalized value | `TouchGesture` | Encoded `gesture_state` |
 | ---: | --- | ---: |
 | 0 | `NONE` | `0x00` |
 | 1 | `SINGLE_CLICK` | `0x10` |
@@ -804,6 +899,12 @@ Normalized and raw gesture mappings:
 | 10 | `LEFT_SWIPE` | `0x61` |
 | 11 | `LEFT_SWIPE_AND_HOLD` | `0x62` |
 
+Current firmware recognizes single/double taps, hold, and left/right swipe
+gestures (including swipe-and-hold) from the 1D position. Right means increasing
+X toward the tip; left means decreasing X toward the connector. Up/down enum
+values remain for compatibility with older firmware and are not emitted by the
+current slider recognizer. Unknown codes remain available as raw integers.
+
 ```python
 await device.touch.subscribe_gesture(
     lambda sample: print(sample.gesture_type, hex(sample.gesture_state))
@@ -812,9 +913,11 @@ await device.touch.subscribe_gesture(
 
 ### Raw touch state
 
-`RawTouchSample` adds `touch_state`, the original one-byte TOUCHSTATE register,
-to the timestamp, presence, and coordinates. Use it for diagnostics or
-controller-specific logic; ordinary applications should prefer `TouchState`.
+`RawTouchSample` adds `touch_state`, the native one-byte TOUCHSTATE register,
+to the same host-decoded timestamp, presence, coordinates, and position helpers.
+Use `touched` for contact: the native TCH bit can disagree with the host's 1D
+decoder, including at the first pads. The raw BLE characteristic does not carry
+per-electrode measurements and is intended for diagnostics.
 
 ```python
 latest = await device.touch.read_raw()
@@ -823,6 +926,12 @@ await device.touch.subscribe_raw(on_raw_touch)
 
 The raw characteristic mirrors a 16-byte aligned firmware structure. The SDK
 removes the alignment padding and exposes only meaningful fields.
+
+Touch notifications are best-effort. Firmware uses a bounded, nonblocking queue
+and can drop notifications when the BLE link is congested; reads retain the
+latest cached sample. Applications should tolerate gaps and use `timestamp_us`
+for ordering. Subscribe to the state stream for UI updates and enable the raw
+stream when its diagnostic byte is needed.
 
 ### Touch methods
 
@@ -838,9 +947,9 @@ removes the alignment padding and exposes only meaningful fields.
 
 | Characteristic | UUID | Access | Payload |
 | --- | --- | --- | --- |
-| Touch state | `33a5eb42-0e13-424f-8b7a-942be0ee5cfc` | Read, Notify | `<q?HH>`: timestamp µs, touched, x, y |
-| Touch gesture | `33a5eb43-0e13-424f-8b7a-942be0ee5cfc` | Read, Notify | `<qBB>`: timestamp µs, normalized gesture, raw gesture |
-| Raw touch data | `33a5eb44-0e13-424f-8b7a-942be0ee5cfc` | Read, Notify | 16-byte aligned firmware touch message |
+| Touch state | `33a5eb42-0e13-424f-8b7a-942be0ee5cfc` | Read, Notify | 13 bytes, `<q?HH>`: timestamp µs, touched, x, reserved y |
+| Touch gesture | `33a5eb43-0e13-424f-8b7a-942be0ee5cfc` | Read, Notify | 10 bytes, `<qBB>`: timestamp µs, normalized gesture, encoded host gesture |
+| Raw touch data | `33a5eb44-0e13-424f-8b7a-942be0ee5cfc` | Read, Notify | 16 bytes, `<q?xHHBx>`: timestamp µs, touched, padding, x, reserved y, native touch_state, padding |
 | Sampling enable | `33a5eb51-0e13-424f-8b7a-942be0ee5cfc` | Read, Write | One byte: 0 or 1 |
 
 ## RGB LED
@@ -980,6 +1089,19 @@ full.
 
 UUID constants are available from `senswear.uuids` for applications that need
 lower-level GATT access.
+
+## Changes in SDK 0.3
+
+- Touch adds 1D geometry constants and `position_normalized`/`position_mm`
+  helpers. UUIDs, packet sizes, legacy raw fields, and gesture IDs are unchanged.
+- All touch sample types provide a UTC `timestamp` convenience property while
+  preserving exact signed 64-bit `timestamp_us` integers.
+- Temperature adds independent interval indications through
+  `subscribe_measurement_interval()`, `unsubscribe_measurement_interval()`, and
+  `unsubscribe_all()`.
+- Typed configuration, clock, and haptic writes now require `response=True`,
+  matching the firmware's advertised GATT properties. Remove `response=False`
+  from those calls. LED color and low-level GATT writes retain the option.
 
 ## Migration notes from SDK 0.1
 

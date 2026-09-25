@@ -23,6 +23,7 @@ from ._common import (
     decode_bool,
     encode_bool,
     notification_handler,
+    require_write_response,
     unpack_exact,
 )
 
@@ -286,6 +287,7 @@ class ImuModule:
     async def set_physical_streams_enabled(
         self, enabled: bool, *, response: bool = True
     ) -> None:
+        require_write_response(response)
         await self._client.write_gatt_char(
             IMU_PHYSICAL_STREAMS_ENABLE_UUID,
             encode_bool(enabled, "enabled"),
@@ -303,6 +305,7 @@ class ImuModule:
     async def set_drain_period_ms(
         self, period_ms: int, *, response: bool = True
     ) -> None:
+        require_write_response(response)
         if not isinstance(period_ms, int) or not 1 <= period_ms <= 0xFFFFFFFF:
             raise ValueError("period_ms must be an integer between 1 and 4294967295.")
         await self._client.write_gatt_char(

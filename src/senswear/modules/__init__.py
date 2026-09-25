@@ -10,6 +10,9 @@ from .charger import (
     PowerSourceState,
     PowerStatusModule,
 )
+from .device_info import (
+    DaughterBoard, DeviceCapabilities, DeviceFeature, DeviceInfo, DeviceInfoModule,
+)
 from .haptic import HapticFrame, HapticModule, HapticPattern
 from .imu import (
     ActivitySample,
@@ -37,6 +40,11 @@ from .time import (
     TimeModule,
 )
 from .touch import (
+    TOUCH_ELECTRODE_COUNT,
+    TOUCH_ELECTRODE_PITCH,
+    TOUCH_ELECTRODE_PITCH_MM,
+    TOUCH_LENGTH_MM,
+    TOUCH_POSITION_MAX,
     RawTouchSample,
     TouchGesture,
     TouchGestureSample,
@@ -45,6 +53,11 @@ from .touch import (
 )
 
 __all__ = [
+    "DaughterBoard",
+    "DeviceCapabilities",
+    "DeviceFeature",
+    "DeviceInfo",
+    "DeviceInfoModule",
     "ActivitySample",
     "ActivityTransition",
     "BatteryGaugeModule",
@@ -81,6 +94,11 @@ __all__ = [
     "TemperatureSample",
     "TemperatureType",
     "TimeModule",
+    "TOUCH_ELECTRODE_COUNT",
+    "TOUCH_ELECTRODE_PITCH",
+    "TOUCH_ELECTRODE_PITCH_MM",
+    "TOUCH_LENGTH_MM",
+    "TOUCH_POSITION_MAX",
     "TouchGesture",
     "TouchGestureSample",
     "TouchModule",

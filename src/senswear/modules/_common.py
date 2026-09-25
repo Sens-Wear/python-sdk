@@ -51,6 +51,15 @@ def encode_bool(value: bool, name: str) -> bytes:
     return bytes((int(value),))
 
 
+def require_write_response(response: bool) -> None:
+    """Enforce firmware characteristics that advertise acknowledged Write only."""
+
+    if not isinstance(response, bool):
+        raise TypeError("response must be a bool.")
+    if not response:
+        raise ValueError("This characteristic requires response=True.")
+
+
 def notification_handler(
     decoder: Callable[[bytes | bytearray | memoryview], T],
     callback: DecodedCallback[T],

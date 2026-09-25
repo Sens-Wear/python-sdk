@@ -16,6 +16,7 @@ from ._common import (
     GattClient,
     NotificationHandler,
     notification_handler,
+    require_write_response,
     unpack_exact,
 )
 
@@ -116,6 +117,7 @@ class TemperatureModule:
     def __init__(self, client: GattClient) -> None:
         self._client = client
         self._notify_handler: NotificationHandler | None = None
+        self._interval_handler: NotificationHandler | None = None
 
     async def read_temperature_type(self) -> TemperatureType | int:
         (raw_type,) = unpack_exact(
@@ -131,18 +133,16 @@ class TemperatureModule:
     async def read_measurement_interval(self) -> int:
         """Read the applied measurement interval in seconds."""
 
-        (interval,) = unpack_exact(
-            await self._client.read_gatt_char(TEMPERATURE_MEASUREMENT_INTERVAL_UUID),
-            "<H",
-            "Temperature measurement interval",
+        return _decode_measurement_interval(
+            await self._client.read_gatt_char(TEMPERATURE_MEASUREMENT_INTERVAL_UUID)
         )
-        return int(interval)
 
     async def set_measurement_interval(
         self, interval_seconds: int, *, response: bool = True
     ) -> None:
         """Set the interval using the firmware's whole-minute resolution."""
 
+        require_write_response(response)
         if (
             not isinstance(interval_seconds, int)
             or isinstance(interval_seconds, bool)
@@ -176,6 +176,35 @@ class TemperatureModule:
             return
         await self._client.stop_notify(self.measurement_uuid)
         self._notify_handler = None
+
+    async def subscribe_measurement_interval(
+        self, callback: DecodedCallback[int]
+    ) -> None:
+        """Subscribe to applied interval changes, in seconds (zero disables)."""
+
+        await self.unsubscribe_measurement_interval()
+        handler = notification_handler(_decode_measurement_interval, callback)
+        await self._client.start_notify(TEMPERATURE_MEASUREMENT_INTERVAL_UUID, handler)
+        self._interval_handler = handler
+
+    async def unsubscribe_measurement_interval(self) -> None:
+        """Stop interval indications without changing measurement indications."""
+
+        if self._interval_handler is None:
+            return
+        await self._client.stop_notify(TEMPERATURE_MEASUREMENT_INTERVAL_UUID)
+        self._interval_handler = None
+
+    async def unsubscribe_all(self) -> None:
+        """Stop both temperature measurement and interval indications."""
+
+        await self.unsubscribe()
+        await self.unsubscribe_measurement_interval()
+
+
+def _decode_measurement_interval(payload: bytes | bytearray | memoryview) -> int:
+    (interval,) = unpack_exact(payload, "<H", "Temperature measurement interval")
+    return int(interval)
 
 
 def _decode_ieee11073_float(raw: int) -> float:

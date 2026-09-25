@@ -6,6 +6,7 @@ from typing import Iterable, Protocol, TypeAlias
 
 from ..exceptions import ProtocolError
 from ..uuids import HAPTIC_PATTERN_UUID
+from ._common import require_write_response
 
 HAPTIC_PATTERN_VERSION = 1
 HAPTIC_PATTERN_FLAGS = 0
@@ -159,6 +160,7 @@ class HapticModule:
     async def play(self, pattern: HapticPatternInput, *, response: bool = True) -> None:
         """Play a haptic pattern."""
 
+        require_write_response(response)
         haptic_pattern = _coerce_pattern(pattern)
         await self._client.write_gatt_char(
             self.pattern_uuid,

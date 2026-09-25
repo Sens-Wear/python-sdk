@@ -43,12 +43,12 @@ class PpgTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await module.read_red(), PpgSample(1_720_000_000_123, 0x3FFFF))
         self.assertTrue(await module.sampling_enabled())
         await module.set_sampling_enabled(False)
-        await module.set_per_sample_irq_enabled(True, response=False)
+        await module.set_per_sample_irq_enabled(True)
         self.assertEqual(
             client.writes,
             [
                 (PPG_SAMPLING_ENABLE_UUID, b"\x00", True),
-                (PPG_PER_SAMPLE_IRQ_UUID, b"\x01", False),
+                (PPG_PER_SAMPLE_IRQ_UUID, b"\x01", True),
             ],
         )
 

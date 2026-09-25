@@ -6,6 +6,7 @@ from typing import Any, Callable, Iterable
 from .exceptions import DeviceNotFoundError, NotConnectedError, SenswearDependencyError
 from .modules.battery import BatteryModule
 from .modules.charger import PowerStatusModule
+from .modules.device_info import DeviceInfoModule
 from .modules.haptic import HapticModule
 from .modules.imu import ImuModule
 from .modules.led import LedModule
@@ -14,7 +15,7 @@ from .modules.temperature import TemperatureModule
 from .modules.time import TimeModule
 from .modules.touch import TouchModule
 
-DEFAULT_NAME_PREFIXES = ("Sens Wear", "SensWear", "SenseWear")
+DEFAULT_NAME_PREFIXES = ("Sens Wear", "SensWear")
 NotifyCallback = Callable[[object, bytearray], None]
 
 
@@ -55,6 +56,7 @@ class SenswearClient:
         self._client: Any | None = None
         self._device: Any | None = None
         self.battery = BatteryModule(self)
+        self.device_info = DeviceInfoModule(self)
         self.power = PowerStatusModule(self)
         # Kept as a compatibility alias; the firmware now exposes standardized
         # Battery Level Status rather than the old raw charger bitfield.

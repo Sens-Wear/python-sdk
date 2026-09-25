@@ -48,14 +48,14 @@ class TimeTests(unittest.IsolatedAsyncioTestCase):
         client = FakeGattClient()
         module = TimeModule(client)
         local = datetime(2026, 7, 24, 13, 0, tzinfo=timezone(timedelta(hours=3)))
-        await module.set(local, adjust_reason=1, response=False)
+        await module.set(local, adjust_reason=1)
         self.assertEqual(
             client.writes,
             [
                 (
                     CURRENT_TIME_UUID,
                     struct.pack("<HBBBBBBBB", 2026, 7, 24, 10, 0, 0, 5, 0, 1),
-                    False,
+                    True,
                 )
             ],
         )

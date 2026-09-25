@@ -17,6 +17,7 @@ from ._common import (
     decode_bool,
     encode_bool,
     notification_handler,
+    require_write_response,
     unpack_exact,
 )
 
@@ -108,6 +109,7 @@ class PpgModule:
     async def set_sampling_enabled(
         self, enabled: bool, *, response: bool = True
     ) -> None:
+        require_write_response(response)
         await self._client.write_gatt_char(
             PPG_SAMPLING_ENABLE_UUID,
             encode_bool(enabled, "enabled"),
@@ -123,6 +125,7 @@ class PpgModule:
     async def set_per_sample_irq_enabled(
         self, enabled: bool, *, response: bool = True
     ) -> None:
+        require_write_response(response)
         await self._client.write_gatt_char(
             PPG_PER_SAMPLE_IRQ_UUID,
             encode_bool(enabled, "enabled"),
